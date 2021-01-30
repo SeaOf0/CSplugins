@@ -1,0 +1,38 @@
+menu "工作目录" {
+	item "创建工作目录" {
+	    $bid = $1;
+	    $dialog = dialog("创建工作目录", %(path => "C:\\windows\\temp\\test", bid => $bid), &create_workpath);
+	    dialog_description($dialog, "创建你的工作目录");
+	    drow_text($dialog, "path",  "工作路径: ");
+	    dbutton_action($dialog, "确定");
+	    dialog_show($dialog);
+	}
+	sub create_workpath{
+		blog($bid, "-------------------------------------------------------------创建工作目录------------------------------------------------------------");
+		blog($bid, "会创建".$3['path']."目录，并将当期的工作路径改为该路径");
+		bshell($bid, "mkdir $3['path']");
+		bcd($bid, "$3['path']");
+		bshell($bid, "chdir");
+	}
+	item "切换到工作目录" {
+	    $bid = $1;
+	    $dialog = dialog("切换到工作目录", %(path => "C:\\windows\\temp\\test", bid => $bid), &qie_workpath);
+	    dialog_description($dialog, "切换你的工作目录");
+	    drow_text($dialog, "path",  "工作路径: ");
+	    dbutton_action($dialog, "确定");
+	    dialog_show($dialog);
+	}
+	sub qie_workpath{
+		blog($bid, "-------------------------------------------------------------切换到工作目录------------------------------------------------------------");
+		bcd($bid, "$3['path']");
+		bshell($bid, "chdir");
+	}
+	item "查看当前工作目录" {
+		blog($1, "-------------------------------------------------------------查看当前工作目录------------------------------------------------------------");
+		bshell($1, "chdir");
+	}
+	item "查看当前工作目录内容" {
+		blog($1, "-------------------------------------------------------------查看当前工作目录内容------------------------------------------------------------");
+		bshell($1, "dir");
+	}
+}

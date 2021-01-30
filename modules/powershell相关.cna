@@ -1,0 +1,20 @@
+menu "powershell相关" {
+  item "查看powershell相关信息"{
+      blog($1, "-------------------------------------------------------------查看powershell相关信息--------------------------------------------------------");
+      bexecute_assembly($1, script_resource('/exe/SharpCheckInfo.exe'), "-PowershellInfo");
+  }
+	item "查看powershell执行策略" {
+		  blog($1, "-------------------------------------------------------------查看powershell执行策略---------------------------------------------------------");
+			bpowerpick($1,"get-Executionpolicy");
+	}
+	item "允许加载powershell文件" {
+      blog($1, "-------------------------------------------------------------允许加载powershell文件---------------------------------------------------");
+      bpowerpick($1,"Set-Itemproperty -path 'Registry::HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\PowerShell\\1\\ShellIds\\Microsoft.PowerShell' -Name 'ExecutionPolicy' -value 'Unrestricted'");
+      bpowerpick($1,"get-Executionpolicy");
+	}
+	item "禁止加载powershell文件" {
+      blog($1, "-------------------------------------------------------------禁止加载powershell文件-----------------------------------------------------");
+      bpowerpick($1,"Set-Itemproperty -path 'Registry::HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\PowerShell\\1\\ShellIds\\Microsoft.PowerShell' -Name 'ExecutionPolicy' -value 'Restricted'");
+      bpowerpick($1,"get-Executionpolicy");
+	}
+}

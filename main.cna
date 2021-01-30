@@ -1,0 +1,19 @@
+popup beacon_bottom {
+    menu "黑魔鬼"{
+        include(script_resource("modules/工作目录.cna"));
+        include(script_resource("modules/信息收集.cna"));
+        include(script_resource("modules/凭据获取.cna"));
+        include(script_resource("modules/权限维持.cna"));
+        include(script_resource("modules/权限提升.cna"));
+        include(script_resource("modules/用户相关.cna"));
+        include(script_resource("modules/RDP相关.cna"));
+        include(script_resource("modules/防火墙相关.cna"));
+        include(script_resource("modules/域渗透.cna"));
+        include(script_resource("modules/powershell相关.cna"));
+        include(script_resource("modules/内网穿透.cna"));
+        include(script_resource("modules/内网探测.cna"));
+        include(script_resource("modules/远程文件下载.cna"));
+        include(script_resource("modules/娱乐.cna"));
+        include(script_resource("modules/痕迹清除.cna"));
+    }
+}

